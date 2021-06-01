@@ -1,0 +1,22 @@
+description: Imagenet_Pytorch_const
+hyperparameters:
+ global_batch_size: 256
+ dense1: 128
+ data: /mnt/data
+ arch: resnet18
+ workers: 4
+ start-epoch: 0
+ lr: 0.1
+ momentum: 0.9
+ weight_decay: 1e-4
+ pretrained: True
+ 
+# records_per_epoch: 60000
+searcher:
+ name: single
+ metric: val_loss
+ smaller_is_better: false
+ max_length:
+   batches: 200 #90 epochs
+entrypoint: model_def:ImagenetTrial
+max_restarts: 0
