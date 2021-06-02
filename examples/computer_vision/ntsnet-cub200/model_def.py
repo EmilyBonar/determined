@@ -16,7 +16,7 @@ class MyTrial(PyTorchTrial):
    def __init__(self, context: PyTorchTrialContext) -> None:
        self.context = context
 
-       self.model = self.context.wrap_model(model.attention_net(topN=PROPOSAL_NUM, num_classes=len(classes_dict)))
+       self.model = self.context.wrap_model(model.attention_net(topN=PROPOSAL_NUM))
        self.hparams = AttrDict(self.context.get_hparams())
 
        # define optimizers
@@ -35,13 +35,34 @@ class MyTrial(PyTorchTrial):
        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
        trainset = torchvision.datasets.CIFAR10(root=self.download_directory, train=True, download=True, transform=transform)
        return DataLoader(trainset, batch_size=self.context.get_per_slot_batch_size())
-       #return DataLoader()
  
    def build_validation_data_loader(self) -> DataLoader:
-       return DataLoader()
+       transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+       trainset = torchvision.datasets.CIFAR10(root=self.download_directory, train=False, download=True, transform=transform)
+       return DataLoader(trainset, batch_size=self.context.get_per_slot_batch_size())
  
    def train_batch(self, batch: TorchData, epoch_idx: int, batch_idx: int)  -> Dict[str, Any]:
-       return {}
+       batch = cast(Tuple[torch.Tensor, torch.Tensor], batch)
+       data, labels = batch
+
+       output = self.model(data)
+       loss = torch.nn.functional.nll_loss(output, labels)
+
+       self.context.backward(loss)
+       self.context.step_optimizer(self.raw_optimizer)
+       self.context.step_optimizer(self.concat_optimizer)
+       self.context.step_optimizer(self.part_optimizer)
+       self.context.step_optimizer(self.partcls_optimizer)
+       return {"loss": loss}
  
    def evaluate_batch(self, batch: TorchData) -> Dict[str, Any]:
-       return {}
+       batch = cast(Tuple[torch.Tensor, torch.Tensor], batch)
+       data, labels = batch
+
+       output = self.model(data)
+       validation_loss = torch.nn.functional.nll_loss(output, labels).item()
+
+       pred = output.argmax(dim=1, keepdim=True)
+       accuracy = pred.eq(labels.view_as(pred)).sum().item() / len(data)
+
+       return {"validation_loss": validation_loss, "accuracy": accuracy}
