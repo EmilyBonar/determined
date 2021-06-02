@@ -2,7 +2,6 @@ import torch
 import torchvision
 from torch import nn
 from torchvision import transforms
-from torch.optim.lr_scheduler import MultiStepLR
 from attrdict import AttrDict
 
 from typing import Any, Dict, Sequence, Tuple, Union, cast
