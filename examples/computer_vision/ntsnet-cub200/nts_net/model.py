@@ -33,7 +33,7 @@ class ProposalNet(nn.Module):
 
 
 class attention_net(nn.Module):
-    def __init__(self, topN=6, device='cpu', num_classes=200):
+    def __init__(self, topN=6, device='cuda', num_classes=200):
         super(attention_net, self).__init__()
         self.device = device
         self.pretrained_model = resnet.resnet50(pretrained=True)

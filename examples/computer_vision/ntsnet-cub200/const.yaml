@@ -1,4 +1,4 @@
-description: Imagenet_Pytorch_const
+description: Ntsnet_Pytorch_const
 hyperparameters:
  global_batch_size: 256
  dense1: 128
@@ -18,5 +18,5 @@ searcher:
  smaller_is_better: false
  max_length:
    batches: 200 #90 epochs
-entrypoint: model_def:ImagenetTrial
+entrypoint: model_def:MyTrial
 max_restarts: 0

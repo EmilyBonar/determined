@@ -3,6 +3,7 @@ import torchvision
 from torch import nn
 from torchvision import transforms
 from attrdict import AttrDict
+import tempfile
 
 from typing import Any, Dict, Sequence, Tuple, Union, cast
 from determined.pytorch import DataLoader, PyTorchTrial, PyTorchTrialContext
@@ -15,7 +16,12 @@ class MyTrial(PyTorchTrial):
    def __init__(self, context: PyTorchTrialContext) -> None:
        self.context = context
 
+       self.download_directory = tempfile.mkdtemp()
+
        self.model = self.context.wrap_model(model.attention_net(topN=PROPOSAL_NUM))
+
+       self.model = self.context.wrap_model()
+
        self.hparams = AttrDict(self.context.get_hparams())
 
        # define optimizers
