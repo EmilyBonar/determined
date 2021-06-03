@@ -6,7 +6,8 @@ from attrdict import AttrDict
 
 from typing import Any, Dict, Sequence, Tuple, Union, cast
 from determined.pytorch import DataLoader, PyTorchTrial, PyTorchTrialContext
-import model
+from nts_net.config import PROPOSAL_NUM  # this is also used into another file
+from nts_net import model
 
 TorchData = Union[Dict[str, torch.Tensor], Sequence[torch.Tensor], torch.Tensor]
  
@@ -14,7 +15,7 @@ class MyTrial(PyTorchTrial):
    def __init__(self, context: PyTorchTrialContext) -> None:
        self.context = context
 
-       self.model = self.context.wrap_model(model.attention_net())
+       self.model = self.context.wrap_model(model.attention_net(topN=PROPOSAL_NUM))
        self.hparams = AttrDict(self.context.get_hparams())
 
        # define optimizers
