@@ -18,9 +18,7 @@ class MyTrial(PyTorchTrial):
 
        self.download_directory = tempfile.mkdtemp()
 
-       self.model = self.context.wrap_model(model.attention_net(topN=PROPOSAL_NUM))
-
-       self.model = self.context.wrap_model()
+       self.model = self.context.wrap_model(model.attention_net())
 
        self.hparams = AttrDict(self.context.get_hparams())
 
