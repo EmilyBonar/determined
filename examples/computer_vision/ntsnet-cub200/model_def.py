@@ -1,12 +1,12 @@
 import torch
 import torchvision
-from torch import nn
+from torch.optim.lr_scheduler import MultiStepLR
 from torchvision import transforms
 from attrdict import AttrDict
 import tempfile
 
 from typing import Any, Dict, Sequence, Tuple, Union, cast
-from determined.pytorch import DataLoader, PyTorchTrial, PyTorchTrialContext
+from determined.pytorch import DataLoader, PyTorchTrial, PyTorchTrialContext, LRScheduler
 from nts_net.config import PROPOSAL_NUM  # this is also used into another file
 from nts_net import model
 
@@ -18,7 +18,12 @@ class MyTrial(PyTorchTrial):
 
        self.download_directory = tempfile.mkdtemp()
 
-       self.model = self.context.wrap_model(model.attention_net())
+       transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+       self.trainset = torchvision.datasets.CIFAR10(root=self.download_directory, train=True, download=True, transform=transform)
+
+       classes_dict = {i: v for i, v in enumerate(self.trainset.classes)}
+
+       self.model = self.context.wrap_model(model.attention_net(topN=PROPOSAL_NUM, num_classes=len(classes_dict), device='cuda'))
 
        self.hparams = AttrDict(self.context.get_hparams())
 
@@ -33,11 +38,14 @@ class MyTrial(PyTorchTrial):
        self.part_optimizer = self.context.wrap_optimizer(torch.optim.SGD(part_parameters, lr=self.hparams.lr, momentum=self.hparams.momentum, weight_decay=self.hparams.weight_decay))
        self.partcls_optimizer = self.context.wrap_optimizer(torch.optim.SGD(partcls_parameters, lr=self.hparams.lr, momentum=self.hparams.momentum, weight_decay=self.hparams.weight_decay))
 
+       self.raw_scheduler = self.context.wrap_lr_scheduler(MultiStepLR(self.raw_optimizer, milestones=[60, 100], gamma=0.1), step_mode=LRScheduler.StepMode.STEP_EVERY_EPOCH)
+       self.concat_scheduler = self.context.wrap_lr_scheduler(MultiStepLR(self.concat_optimizer, milestones=[60, 100], gamma=0.1), step_mode=LRScheduler.StepMode.STEP_EVERY_EPOCH)
+       self.part_scheduler = self.context.wrap_lr_scheduler(MultiStepLR(self.part_optimizer, milestones=[60, 100], gamma=0.1), step_mode=LRScheduler.StepMode.STEP_EVERY_EPOCH)
+       self.partcls_scheduler = self.context.wrap_lr_scheduler(MultiStepLR(self.partcls_optimizer, milestones=[60, 100], gamma=0.1), step_mode=LRScheduler.StepMode.STEP_EVERY_EPOCH)
+
 
    def build_training_data_loader(self) -> DataLoader:
-       transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-       trainset = torchvision.datasets.CIFAR10(root=self.download_directory, train=True, download=True, transform=transform)
-       return DataLoader(trainset, batch_size=self.context.get_per_slot_batch_size())
+       return DataLoader(self.trainset, batch_size=self.context.get_per_slot_batch_size())
  
    def build_validation_data_loader(self) -> DataLoader:
        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
