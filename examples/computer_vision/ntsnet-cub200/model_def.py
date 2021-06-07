@@ -20,12 +20,9 @@ class MyTrial(PyTorchTrial):
        self.download_directory = tempfile.mkdtemp()
 
        transform = transforms.Compose([
-        # transforms.Resize((600, 600), Image.BILINEAR),
-        # transforms.CenterCrop((448, 448)),
         transforms.Resize((448, 448), Image.BILINEAR),
         transforms.RandomHorizontalFlip(),  # solo se train
         transforms.ToTensor(),
-        # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
        ])
        self.trainset = torchvision.datasets.CIFAR10(root=self.download_directory, train=True, download=True, transform=transform)
 
@@ -59,13 +56,9 @@ class MyTrial(PyTorchTrial):
  
    def build_validation_data_loader(self) -> DataLoader:
        transform = transforms.Compose([
-        # transforms.Resize((600, 600), Image.BILINEAR),
-        # transforms.CenterCrop((448, 448)),
         transforms.Resize((448, 448), Image.BILINEAR),
-        transforms.RandomHorizontalFlip(),  # solo se train
         transforms.ToTensor(),
-        # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-       ])
+    ])
        trainset = torchvision.datasets.CIFAR10(root=self.download_directory, train=False, download=True, transform=transform)
        return DataLoader(trainset, batch_size=self.context.get_per_slot_batch_size())
  
