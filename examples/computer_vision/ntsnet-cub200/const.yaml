@@ -1,6 +1,6 @@
 description: Ntsnet_Pytorch_const
 hyperparameters:
- global_batch_size: 256
+ global_batch_size: 8
  dense1: 128
  data: /mnt/data
  arch: resnet18

@@ -35,7 +35,7 @@ class MyTrial(PyTorchTrial):
 
        self.hparams = AttrDict(self.context.get_hparams())
 
-       self.criterion = torch.nn.CrossEntropyLoss()
+       self.creterion = torch.nn.CrossEntropyLoss()
 
        # define optimizers
        raw_parameters = list(self.model.pretrained_model.parameters())
