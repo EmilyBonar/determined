@@ -58,7 +58,14 @@ class MyTrial(PyTorchTrial):
        return DataLoader(self.trainset, batch_size=self.context.get_per_slot_batch_size())
  
    def build_validation_data_loader(self) -> DataLoader:
-       transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+       transform = transforms.Compose([
+        # transforms.Resize((600, 600), Image.BILINEAR),
+        # transforms.CenterCrop((448, 448)),
+        transforms.Resize((448, 448), Image.BILINEAR),
+        transforms.RandomHorizontalFlip(),  # solo se train
+        transforms.ToTensor(),
+        # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+       ])
        trainset = torchvision.datasets.CIFAR10(root=self.download_directory, train=False, download=True, transform=transform)
        return DataLoader(trainset, batch_size=self.context.get_per_slot_batch_size())
  
@@ -86,10 +93,10 @@ class MyTrial(PyTorchTrial):
        batch = cast(Tuple[torch.Tensor, torch.Tensor], batch)
        data, labels = batch
 
-       output = self.model(data)
-       validation_loss = torch.nn.functional.nll_loss(output, labels).item()
+       _, _, concat_logits, _, _, _, _ = self.model(data)
+       # calculate loss
+       concat_loss = self.creterion(concat_logits, labels)
+       # calculate accuracy
+       _, concat_predict = torch.max(concat_logits, 1)
 
-       pred = output.argmax(dim=1, keepdim=True)
-       accuracy = pred.eq(labels.view_as(pred)).sum().item() / len(data)
-
-       return {"validation_loss": validation_loss, "accuracy": accuracy}
+       return {"val_loss": concat_loss}
