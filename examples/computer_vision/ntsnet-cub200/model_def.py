@@ -3,6 +3,7 @@ import torchvision
 from torch.optim.lr_scheduler import MultiStepLR
 from torchvision import transforms
 from attrdict import AttrDict
+from PIL import Image
 import tempfile
 
 from typing import Any, Dict, Sequence, Tuple, Union, cast
@@ -18,7 +19,14 @@ class MyTrial(PyTorchTrial):
 
        self.download_directory = tempfile.mkdtemp()
 
-       transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+       transform = transforms.Compose([
+        # transforms.Resize((600, 600), Image.BILINEAR),
+        # transforms.CenterCrop((448, 448)),
+        transforms.Resize((448, 448), Image.BILINEAR),
+        transforms.RandomHorizontalFlip(),  # solo se train
+        transforms.ToTensor(),
+        # transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+       ])
        self.trainset = torchvision.datasets.CIFAR10(root=self.download_directory, train=True, download=True, transform=transform)
 
        classes_dict = {i: v for i, v in enumerate(self.trainset.classes)}
@@ -26,6 +34,8 @@ class MyTrial(PyTorchTrial):
        self.model = self.context.wrap_model(model.attention_net(topN=PROPOSAL_NUM, num_classes=len(classes_dict), device='cuda'))
 
        self.hparams = AttrDict(self.context.get_hparams())
+
+       self.criterion = torch.nn.CrossEntropyLoss()
 
        # define optimizers
        raw_parameters = list(self.model.pretrained_model.parameters())
@@ -56,15 +66,21 @@ class MyTrial(PyTorchTrial):
        batch = cast(Tuple[torch.Tensor, torch.Tensor], batch)
        data, labels = batch
 
-       output = self.model(data)
-       loss = torch.nn.functional.nll_loss(output, labels)
+       _, _, raw_logits, concat_logits, part_logits, _, top_n_prob = self.model(data)
+       part_loss = model.list_loss(part_logits.view(len(data) * PROPOSAL_NUM, -1), labels.unsqueeze(1).repeat(1, PROPOSAL_NUM).view(-1)).view(len(data), PROPOSAL_NUM)
+       raw_loss = self.creterion(raw_logits, labels)
+       concat_loss = self.creterion(concat_logits, labels)
+       rank_loss = model.ranking_loss(top_n_prob, part_loss)
+       partcls_loss = self.creterion(part_logits.view(len(data) * PROPOSAL_NUM, -1), labels.unsqueeze(1).repeat(1, PROPOSAL_NUM).view(-1))
 
-       self.context.backward(loss)
+       total_loss = raw_loss + rank_loss + concat_loss + partcls_loss
+
+       self.context.backward(total_loss)
        self.context.step_optimizer(self.raw_optimizer)
        self.context.step_optimizer(self.concat_optimizer)
        self.context.step_optimizer(self.part_optimizer)
        self.context.step_optimizer(self.partcls_optimizer)
-       return {"loss": loss}
+       return {"loss": total_loss}
  
    def evaluate_batch(self, batch: TorchData) -> Dict[str, Any]:
        batch = cast(Tuple[torch.Tensor, torch.Tensor], batch)
