@@ -11,12 +11,11 @@ hyperparameters:
  weight_decay: 1e-4
  pretrained: True
  
-# records_per_epoch: 60000
 searcher:
  name: single
  metric: val_loss
  smaller_is_better: false
  max_length:
-   batches: 200 #90 epochs
+   batches: 50
 entrypoint: model_def:MyTrial
 max_restarts: 0
